@@ -83,3 +83,110 @@
 8. **실전 사례 분석**
     - 대형 서비스(전자상거래, SNS 등)에서의 GORM 사용 사례
     - 오픈소스 프로젝트(GORM 추가 확장 기능, 예제 코드) 분석
+
+
+
+
+
+
+# 트랜잭션 (심화) - 이거 따로 정리할 필요있음
+
+## 1. 기본(Basic)
+
+1. **트랜잭션 개념과 필요성**  
+   - 트랜잭션 정의 (ACID, 원자성/일관성/격리성/지속성)  
+   - ORM 관점에서 트랜잭션이 중요한 이유
+
+2. **GORM 트랜잭션 기초**  
+   - `Begin`/`Commit`/`Rollback` 메서드 개요  
+   - 간단한 예제: 한 함수 내에서 `tx := db.Begin()`, 여러 CRUD 후 `tx.Commit() / tx.Rollback()`
+   - `db.Transaction(func(tx *gorm.DB) error { ... })` 함수형 트랜잭션 소개
+
+3. **에러 처리와 트랜잭션 흐름**  
+   - `if err != nil` 시점에서 `tx.Rollback()`  
+   - `nil` 반환 시 `Commit`  
+   - `RowsAffected` 등 결과값 점검 방식
+
+4. **트랜잭션 범위 및 스코프**  
+   - 함수 단위, 요청 단위로 트랜잭션 묶기  
+   - 동일한 `tx *gorm.DB` 객체를 여러 함수에 전달해서 사용하는 방법
+
+5. **실습 예제**  
+   - 단순 시나리오: “한 사용자 생성 → 다른 사용자 생성 → 오류 발생 시 롤백”  
+   - `db.Transaction()` vs. `Begin()`/`Commit()`
+
+---
+
+## 2. 심화(Advanced)
+
+1. **중첩 트랜잭션(Nested Transaction) 이슈**  
+   - GORM에서 중첩 트랜잭션을 권장하지 않는 이유  
+   - 트랜잭션 객체를 상위에서 만들어 하위 함수로 주입하는 패턴  
+   - 중첩 트랜잭션이 필요한 상황과 대안
+
+2. **트랜잭션 격리 수준(Isolation Level)**  
+   - DB별 기본 격리 수준(READ COMMITTED, REPEATABLE READ 등)  
+   - GORM에서 Isolation Level 설정(가능 시 raw SQL, driver-specific 옵션)
+
+3. **동시성 제어, 데드락(Deadlock) 방지**  
+   - InnoDB 락 매커니즘(MySQL) 예시  
+   - Optimistic Lock vs. Pessimistic Lock  
+   - 트랜잭션이 긴 경우에 발생할 수 있는 문제들(Timeout, Lock Wait Timeout)
+
+4. **트랜잭션 성능 최적화**  
+   - 쿼리 수 줄이기(Batch Insert/Update)  
+   - 트랜잭션 내에서 최소 로직만 수행, 빠른 Commit  
+   - Index 활용, Deadlock 모니터링
+
+5. **트랜잭션과 Raw SQL**  
+   - `tx.Raw()`, `tx.Exec()` 사용 시 주의점  
+   - OR마저도 안 되는 복잡한 쿼리를 트랜잭션 범위에서 실행할 때 패턴
+
+6. **트랜잭션 로깅 및 감사(Auditing)**  
+   - 트랜잭션이 언제 시작/종료되었는지 로깅  
+   - 에러 상황에서 Rollback 이슈 추적
+
+7. **심화 예제**  
+   - 복수 테이블 갱신 로직에서 동시성 이슈 처리  
+   - Isolation Level을 변경하여 테스트해보기
+
+---
+
+## 3. 실무(Production / Real Practice)
+
+1. **대규모 시스템에서의 트랜잭션 설계**  
+   - 마이크로서비스 환경에서의 분산 트랜잭션(Saga, 2PC, Outbox 패턴 간략 소개)  
+   - GORM은 주로 단일 DB 트랜잭션에 초점을 둠 → 분산 트랜잭션 시 대안 고찰
+
+2. **트랜잭션 모니터링 및 운영**  
+   - 트랜잭션 모니터링 툴, DB에서의 Lock/Deadlock 모니터링  
+   - Slow query, Deadlock 발생 시 로그 분석
+
+3. **트랜잭션 에러 핸들링과 재시도(Retry) 전략**  
+   - DB Deadlock 시 재시도 로직(Retry Pattern)  
+   - GORM에서의 재시도 구현 예시(어떻게 트랜잭션을 재시작?)
+
+4. **테스트 및 QA**  
+   - 트랜잭션 단위 테스트 vs 통합 테스트(실제 DB)  
+   - Mock DB 적용할 때 주의 사항(트랜잭션 모킹)
+
+5. **트랜잭션 베스트 프랙티스**  
+   - “짧고 굵게” 트랜잭션 유지 → 락 경쟁 줄이기  
+   - 비즈니스 로직(계산, 파일 처리 등)을 트랜잭션 밖에서 수행
+
+6. **실무 사례 연구**  
+   - 실제 구현: “이체(Transfer) 로직”에서 동시성 문제 해결  
+   - “주문 생성 → 재고 감소” 시나리오 등에서 트랜잭션 범위 설정
+
+7. **결론 및 참고자료**  
+   - GORM 오피셜 문서, driver별 트랜잭션 이슈, DB-specific 문서(MySQL, PostgreSQL 등)  
+   - 마이크로서비스/분산 환경에서의 GORM 트랜잭션 한계와 대안
+
+---
+
+## 요약
+
+- **기본(Basic)** 단계에서는 GORM 트랜잭션의 함수형 사용법(`db.Transaction`)과 에러 처리, `Begin/Commit/Rollback` 흐름을 소개합니다.  
+- **심화(Advanced)** 단계에서는 Isolation Level, Lock/Deadlock 대응, 중첩 트랜잭션 문제, Raw SQL과 혼합 사용 등 더욱 복잡한 상황을 다룹니다.  
+- **실무(Production)** 단계에서는 대규모 시스템/마이크로서비스 관점에서의 트랜잭션 설계, 모니터링/재시도, 베스트 프랙티스와 실전 시나리오를 확인합니다.
+
