@@ -39,9 +39,9 @@ func main() {
 		fmt.Printf("전체 사용자: %v\n", allUsers)
 	}
 
-	// ---------------------------------------------
-	// Update 예시 1) Save: 조회 후 특정 필드 수정 & Save
-	// ---------------------------------------------
+	// -------------------------------------------------------
+	// Update 예시 1) Save : 조회 후 구조체 전체 수정 & Save
+	// -------------------------------------------------------
 	var potatoUser models.User
 	if err := infra.DB.Where("email = ?", "potato@example.com").First(&potatoUser).Error; err != nil {
 		log.Printf("[ERROR] Potato 조회 실패: %v", err)
@@ -56,7 +56,6 @@ func main() {
 
 	// --------------------------------------------------
 	// Update 예시 2) 특정 필드만 Update
-	//    - 조건이 맞는 하나의 레코드에 대해 한 필드만 변경
 	// --------------------------------------------------
 	if err := infra.DB.Model(&models.User{}).
 		Where("email = ?", "tomato@example.com").
@@ -68,7 +67,6 @@ func main() {
 
 	// ---------------------------------------------------
 	// Update 예시 3) 다중 필드 Updates
-	//    - 조건이 맞는 레코드에 대해 여러 필드를 한 번에 변경
 	// ---------------------------------------------------
 	if err := infra.DB.Model(&models.User{}).
 		Where("email = ?", "carrot@example.com").
@@ -78,7 +76,7 @@ func main() {
 		}).Error; err != nil {
 		log.Printf("[ERROR] Carrot 다중 업데이트 실패: %v", err)
 	} else {
-		fmt.Println("Carrot Name과 Age가 동시 업데이트되었습니다.")
+		fmt.Println("Carrot Name과 Age가 동시에 업데이트되었습니다.")
 	}
 
 	// 5) Delete 예시 - Carrot 삭제
